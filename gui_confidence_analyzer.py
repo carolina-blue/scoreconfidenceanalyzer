@@ -6,6 +6,7 @@ import threading
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
+import numpy as np
 from matplotlib.figure import Figure
 from analyze_confidence import categorize_confidence
 
@@ -206,13 +207,62 @@ class ConfidenceAnalyzerGUI:
             summary.columns = ['Category', 'Count']
             summary['Percentage'] = (summary['Count'] / len(df) * 100).round(1)
             
-            # Save files directly
+            # Save files
             timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
             output_file = os.path.join(output_dir, f"confidence_analysis_results_{timestamp}.csv")
             summary_file = os.path.join(output_dir, f"confidence_analysis_summary_{timestamp}.csv")
             
+            # Save CSV files
             df.to_csv(output_file, index=False)
             summary.to_csv(summary_file, index=False)
+            
+            # Save scatter plot
+            plt.figure(figsize=(10, 8))
+            categories = df['Confidence Category'].unique()
+            colors = plt.cm.tab10(np.linspace(0, 1, len(categories)))
+            
+            for i, category in enumerate(categories):
+                subset = df[df['Confidence Category'] == category]
+                plt.scatter(subset['Quiz Score'], subset['Confidence Score'], 
+                           label=category, color=colors[i], alpha=0.7)
+            
+            plt.plot([0, 100], [0, 100], 'k--', label='Perfect Calibration')
+            plt.plot([0, 100], [threshold, 100 + threshold], 'r:', label=f'+{threshold}% Threshold')
+            plt.plot([0, 100], [-threshold, 100 - threshold], 'r:', label=f'-{threshold}% Threshold')
+            
+            plt.xlabel('Quiz Score (%)')
+            plt.ylabel('Confidence Score (%)')
+            plt.title('Quiz Score vs Confidence Analysis')
+            plt.grid(True, alpha=0.3)
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.tight_layout()
+            scatter_file = os.path.join(output_dir, f"confidence_scatter_plot_{timestamp}.png")
+            plt.savefig(scatter_file, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            # Save distribution plot
+            plt.figure(figsize=(10, 6))
+            sorted_summary = summary.sort_values('Count', ascending=False)
+            colors = plt.cm.tab10(np.linspace(0, 1, len(sorted_summary)))
+            bars = plt.bar(sorted_summary['Category'], sorted_summary['Count'], color=colors)
+            
+            # Add count labels on top of bars
+            for bar in bars:
+                height = bar.get_height()
+                plt.annotate(f'{height}',
+                            xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3),
+                            textcoords="offset points",
+                            ha='center', va='bottom')
+            
+            plt.xlabel('Confidence Category')
+            plt.ylabel('Number of Users')
+            plt.title('Distribution of Confidence Categories')
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            dist_file = os.path.join(output_dir, f"confidence_distribution_{timestamp}.png")
+            plt.savefig(dist_file, dpi=300, bbox_inches='tight')
+            plt.close()
             
             # Save results to instance variables
             self.results_df = df
@@ -328,8 +378,9 @@ class ConfidenceAnalyzerGUI:
         # Sort by count
         sorted_summary = self.summary_df.sort_values('Count', ascending=False)
         
-        # Create bar chart
-        bars = ax.bar(sorted_summary['Category'], sorted_summary['Count'])
+        # Create bar chart with different colors
+        colors = plt.cm.tab10(np.linspace(0, 1, len(sorted_summary)))
+        bars = ax.bar(sorted_summary['Category'], sorted_summary['Count'], color=colors)
         
         # Add count labels on top of bars
         for bar in bars:
