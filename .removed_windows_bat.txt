@@ -1,0 +1,33 @@
+@echo off
+setlocal
+
+:: Check if at least one argument is provided
+if "%~1"=="" (
+    echo Usage: run_analysis.bat ^<path_to_csv_file^> [output_directory] [calibration_threshold]
+    echo Example: run_analysis.bat sample_data.csv results 5
+    exit /b 1
+)
+
+:: Set variables
+set CSV_FILE=%~1
+set OUTPUT_DIR=%~2
+if "%OUTPUT_DIR%"=="" set OUTPUT_DIR=results
+
+set THRESHOLD=%~3
+if "%THRESHOLD%"=="" set THRESHOLD=5
+
+:: Create the output directory if it doesn't exist
+if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
+
+:: Run the Python script
+python analyze_confidence.py "%CSV_FILE%" "%OUTPUT_DIR%" %THRESHOLD%
+
+:: Check if the analysis was successful
+if %ERRORLEVEL% equ 0 (
+    echo Analysis completed successfully.
+    echo Results are saved in %OUTPUT_DIR%
+) else (
+    echo Analysis failed. Please check the error messages above.
+)
+
+endlocal
